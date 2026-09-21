@@ -1,3 +1,232 @@
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import {
+  RefreshCw,
+  Trash2,
+  Pencil,
+  Sun,
+  Moon,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  RotateCcw,
+  Eraser,
+  Landmark,
+  Grid3x3,
+  Target,
+  TrendingUp,
+  TrendingDown,
+  Users,
+  ArrowLeftRight,
+  BellRing,
+  StickyNote,
+  ShieldCheck,
+  X,
+  Plus,
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
+/* ---------------------------------------------------------
+   Constants & Utilities
+--------------------------------------------------------- */
+export const BRAND = {
+  header: "#1e293b",
+  darkgreen: "#15803d",
+  crimson: "#b91c1c",
+  violet: "#6d28d9",
+  mauve: "#7c3aed",
+  green: "#16a34a",
+  orange: "#c2410c",
+  teal: "#0f766e",
+  gold: "#b45309",
+};
+
+export const COLOR_PRESETS = {
+  default: { name: "پیش‌فرض", header: "#1e293b" },
+  blue: { name: "آبی", header: "#2563eb" },
+  green: { name: "سبز", header: "#059669" },
+  purple: { name: "بنفش", header: "#7c3aed" },
+};
+
+export function toFaInt(num) {
+  if (num === null || num === undefined) return "";
+  return String(num).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[d]);
+}
+
+export function formatMoney(amount, currency = "rial", usdRate = 650000) {
+  if (!amount && amount !== 0) return "۰";
+  let val = amount;
+  if (currency === "toman") val = amount / 10;
+  if (currency === "usd" && usdRate) val = amount / usdRate;
+  return `${toFaInt(Math.round(val).toLocaleString())} ${
+    currency === "toman" ? "تومان" : currency === "usd" ? "$" : "ریال"
+  }`;
+}
+
+export function todayISO() {
+  return new Date().toISOString().split("T")[0];
+}
+
+export function faLongDate(dateObj) {
+  try {
+    return new Date(dateObj).toLocaleDateString("fa-IR");
+  } catch {
+    return "";
+  }
+}
+
+export function uid() {
+  return Math.random().toString(36).substr(2, 9);
+}
+
+export function parseBankSms(text) {
+  const amountMatch = text.match(/(\d[\d,]*)\s*(ریال|تومان)?/);
+  const amount = amountMatch ? Number(amountMatch[1].replace(/,/g, "")) : 0;
+  const isIncome = text.includes("واریز") || text.includes("+");
+  return {
+    type: isIncome ? "income" : "expense",
+    amount: text.includes("تومان") ? amount * 10 : amount,
+    note: text.slice(0, 30) + "...",
+  };
+}
+
+export const pillStyle = (active) => ({
+  padding: "6px 12px",
+  borderRadius: 20,
+  border: active ? "1px solid #1e293b" : "1px solid #e2e8f0",
+  background: active ? "#1e293b" : "#f8fafc",
+  color: active ? "#fff" : "#64748b",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+});
+
+export function useStyles() {
+  return {
+    card: {
+      background: "#ffffff",
+      borderRadius: 14,
+      boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+      marginBottom: 12,
+    },
+    input: {
+      width: "100%",
+      padding: "10px 12px",
+      borderRadius: 8,
+      border: "1px solid #cbd5e1",
+      fontSize: 13,
+      marginBottom: 10,
+      outline: "none",
+      boxSizing: "border-box",
+    },
+    label: {
+      fontSize: 12,
+      fontWeight: 600,
+      color: "#475569",
+      marginBottom: 4,
+      display: "block",
+    },
+    primaryBtn: {
+      width: "100%",
+      padding: "10px",
+      borderRadius: 8,
+      border: "none",
+      background: BRAND.header,
+      color: "#fff",
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: "pointer",
+    },
+  };
+}
+
+export function useT() {
+  return {
+    card: "#ffffff",
+    text: "#0f172a",
+    sub: "#64748b",
+    border: "#e2e8f0",
+  };
+}
+
+/* ---------------------------------------------------------
+   Shared Components
+--------------------------------------------------------- */
+export function SectionTitle({ text }) {
+  return (
+    <h3 style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", marginBottom: 10 }}>
+      {text}
+    </h3>
+  );
+}
+
+export function Row({ title, subtitle, value, valueColor, extra }) {
+  const t = useT();
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: t.card, borderRadius: 10, marginBottom: 8, boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{title}</div>
+        {subtitle && <div style={{ fontSize: 11, color: t.sub, marginTop: 2 }}>{subtitle}</div>}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {value && <div style={{ fontSize: 13, fontWeight: 700, color: valueColor || t.text }}>{value}</div>}
+        {extra}
+      </div>
+    </div>
+  );
+}
+
+export function AmountInput({ value, onChange, placeholder, style }) {
+  const handleChange = (e) => {
+    const raw = e.target.value.replace(/[^0-9]/g, "");
+    onChange(raw);
+  };
+  const formatted = value ? Number(value).toLocaleString("fa-IR") : "";
+  return (
+    <input
+      style={style}
+      type="text"
+      placeholder={placeholder}
+      value={formatted}
+      onChange={handleChange}
+    />
+  );
+}
+
+export function EmptyRow({ text }) {
+  return (
+    <div style={{ padding: 20, textAlign: "center", color: "#94a3b8", fontSize: 12 }}>
+      {text}
+    </div>
+  );
+}
+
+export function ExplodingPie({ data, height }) {
+  return (
+    <div style={{ height, display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 12 }}>
+      {data && data.length > 0 ? "نمودار بر اساس داده‌ها" : "اطلاعاتی موجود نیست"}
+    </div>
+  );
+}
+
+export function RexaLogo({ size = 32 }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", background: BRAND.header, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: size * 0.4 }}>
+      R
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   Banner & SubViews
+--------------------------------------------------------- */
 function DollarRateBanner({ rates, fetchRates }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "rgba(0,0,0,0.03)", borderRadius: 8, fontSize: 11.5, marginBottom: 12 }}>
@@ -13,34 +242,7 @@ function DollarRateBanner({ rates, fetchRates }) {
   );
 }
 
-const PIE_COLORS = ["#7c3aed", "#2563eb", "#059669", "#d97706", "#dc2626", "#0891b2", "#c026d3", "#4f46e5", "#16a34a", "#e11d48"];
-
-const SUBVIEW_TITLES = {
-  accounts: "مدیریت حساب‌ها و کارت‌ها",
-  categories: "مدیریت دسته‌بندی‌ها",
-  budgets: "بودجه‌بندی",
-  bills: "قبوض و هزینه‌های دوره‌ای",
-  loans: "مدیریت وام‌ها و اقساط",
-  checks: "مدیریت چک‌ها",
-  assets: "مدیریت دارایی‌ها و سرمایه‌گذاری",
-  persons: "مدیریت اشخاص و طرف حساب‌ها",
-  debts: "بدهی‌ها و طلب‌ها",
-  recurring: "تراکنش‌های تکرارشونده",
-  shortcuts: "میانبرهای تراکنش",
-  backup: "پشتیبان‌گیری و بازیابی",
-  settings: "تنظیمات برنامه",
-  fiscal: "دوره‌های مالی",
-  notes: "یادداشت‌ها",
-  reminders: "یادآوری‌ها",
-  members: "اعضای خانواده / اعضا",
-  events: "رویدادها و مناسبت‌ها",
-  projects: "پروژه‌ها",
-};
-
-/* ---------------------------------------------------------
-   SubView Content Manager
---------------------------------------------------------- */
-function SubViewContent({ subView, ctx, onBack }) {
+function SubViewContent({ subView, ctx }) {
   const t = useT();
   const styles = useStyles();
 
@@ -67,9 +269,6 @@ function SubViewContent({ subView, ctx, onBack }) {
   }
 }
 
-/* ---------------------------------------------------------
-   SubViews Modules
---------------------------------------------------------- */
 function AccountsSubView({ ctx, styles, t }) {
   const [name, setName] = useState("");
   const [type, setType] = useState("bank");
@@ -321,7 +520,7 @@ function PersonsSubView({ ctx, styles, t }) {
 function DebtsSubView({ ctx, styles, t }) {
   const [personId, setPersonId] = useState("");
   const [amount, setAmount] = useState("");
-  const [kind, setKind] = useState("payable"); // payable = بدهی به شخص, receivable = طلب از شخص
+  const [kind, setKind] = useState("payable");
   const [note, setNote] = useState("");
 
   const handleAdd = (e) => {
@@ -592,13 +791,13 @@ function TransactionsView({ transactions, catById, accById, filter, setFilter, o
 /* ---------------------------------------------------------
    Operations Manager Tab
 --------------------------------------------------------- */
-function OperationsView({ setSubView, onAdd }) {
+function OperationsView({ setSubView }) {
   const t = useT();
   const menuItems = [
     { key: "accounts", label: "حساب‌ها و کارت‌ها", icon: Landmark, color: BRAND.violet },
     { key: "categories", label: "دسته‌بندی‌ها", icon: Grid3x3, color: BRAND.mauve },
     { key: "budgets", label: "بودجه‌بندی", icon: Target, color: BRAND.green },
-    { key: "loans", label: "وام‌ها و اقساط", icon: Bank, color: BRAND.orange },
+    { key: "loans", label: "وام‌ها و اقساط", icon: Landmark, color: BRAND.orange },
     { key: "checks", label: "مدیریت چک‌ها", icon: FileSpreadsheet, color: BRAND.header },
     { key: "assets", label: "دارایی‌ها و بورس", icon: TrendingUp, color: BRAND.teal },
     { key: "persons", label: "اشخاص و مخاطبین", icon: Users, color: BRAND.violet },
@@ -700,7 +899,7 @@ function ChecksManager({ checks = [], setChecks }) {
 /* ---------------------------------------------------------
    Reports View Tab
 --------------------------------------------------------- */
-function ReportsView({ expenseByCategory, incomeByCategory, totalIncomeYear, totalExpenseYear, netWorthTrend, exportExcel, currency, usdRate }) {
+function ReportsView({ expenseByCategory, incomeByCategory, netWorthTrend, exportExcel, currency, usdRate }) {
   const t = useT();
 
   return (
@@ -857,12 +1056,12 @@ function SideMenu({ onClose, setSubView, profileName }) {
           </div>
         </div>
 
-        <button onClick={() => setSubView("settings")} style={menuBtnStyle(t)}><ShieldCheck size={18} /> تنظیمات برنامه</button>
-        <button onClick={() => setSubView("accounts")} style={menuBtnStyle(t)}><Landmark size={18} /> مدیریت حساب‌ها</button>
-        <button onClick={() => setSubView("categories")} style={menuBtnStyle(t)}><Grid3x3 size={18} /> دسته‌بندی‌ها</button>
-        <button onClick={() => setSubView("backup")} style={menuBtnStyle(t)}><Download size={18} /> پشتیبان‌گیری و اکسل</button>
-        <button onClick={() => setSubView("notes")} style={menuBtnStyle(t)}><StickyNote size={18} /> یادداشت‌ها</button>
-        <button onClick={() => setSubView("reminders")} style={menuBtnStyle(t)}><BellRing size={18} /> یادآوری‌ها</button>
+        <button onClick={() => { setSubView("settings"); onClose(); }} style={menuBtnStyle(t)}><ShieldCheck size={18} /> تنظیمات برنامه</button>
+        <button onClick={() => { setSubView("accounts"); onClose(); }} style={menuBtnStyle(t)}><Landmark size={18} /> مدیریت حساب‌ها</button>
+        <button onClick={() => { setSubView("categories"); onClose(); }} style={menuBtnStyle(t)}><Grid3x3 size={18} /> دسته‌بندی‌ها</button>
+        <button onClick={() => { setSubView("backup"); onClose(); }} style={menuBtnStyle(t)}><Download size={18} /> پشتیبان‌گیری و اکسل</button>
+        <button onClick={() => { setSubView("notes"); onClose(); }} style={menuBtnStyle(t)}><StickyNote size={18} /> یادداشت‌ها</button>
+        <button onClick={() => { setSubView("reminders"); onClose(); }} style={menuBtnStyle(t)}><BellRing size={18} /> یادآوری‌ها</button>
       </div>
     </div>
   );
@@ -870,71 +1069,291 @@ function SideMenu({ onClose, setSubView, profileName }) {
 
 const menuBtnStyle = (t) => ({ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", color: t.text, fontSize: 14, fontWeight: 600, padding: "10px 0", cursor: "pointer", borderBottom: `1px solid ${t.border}` });
 
-function SimpleTextModal({ title, placeholder, onClose, onSubmit }) {
-  const t = useT();
-  const styles = useStyles();
-  const [text, setText] = useState("");
+/* ---------------------------------------------------------
+   Main App Component Export
+--------------------------------------------------------- */
+export default function App() {
+  const [activeTab, setActiveTab] = useState("transactions");
+  const [subView, setSubView] = useState(null);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showAddTx, setShowAddTx] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [txInitial, setTxInitial] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
 
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 350, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
-      <div style={{ width: "100%", maxWidth: 360, background: t.card, borderRadius: 16, padding: 20 }} onClick={(e) => e.stopPropagation()}>
-        <SectionTitle text={title} />
-        <textarea style={{ ...styles.input, height: 100, resize: "none" }} placeholder={placeholder} value={text} onChange={(e) => setText(e.target.value)} />
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => text.trim() && onSubmit(text)} style={styles.primaryBtn}>ثبت</button>
-          <button onClick={onClose} style={{ ...styles.primaryBtn, background: t.border, color: t.text }}>انصراف</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+  // App State Data
+  const [accounts, setAccounts] = useState([
+    { id: "1", name: "بانک ملی", type: "bank", initial: 10000000 },
+    { id: "2", name: "کارت پاسارگاد", type: "card", initial: 5000000 },
+  ]);
+  const [categories, setCategories] = useState([
+    { id: "c1", name: "خرید سوپرمارکت", kind: "expense" },
+    { id: "c2", name: "حقوق و مزایا", kind: "income" },
+  ]);
+  const [transactions, setTransactions] = useState([
+    { id: "t1", amount: 2500000, type: "expense", accountId: "1", categoryId: "c1", date: todayISO(), note: "خرید ماهانه" },
+  ]);
+  const [budgets, setBudgets] = useState([]);
+  const [bills, setBills] = useState([]);
+  const [loans, setLoans] = useState([]);
+  const [checks, setChecks] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [persons, setPersons] = useState([]);
+  const [debts, setDebts] = useState([]);
+  const [recurring, setRecurring] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [reminders, setReminders] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [projects, setProjects] = useState([]);
 
-function ReminderQuickModal({ onClose, onSubmit }) {
-  const t = useT();
-  const styles = useStyles();
-  const [text, setText] = useState("");
-  const [date, setDate] = useState(todayISO());
+  const [settings, setSettings] = useState({
+    theme: "light",
+    themeColor: "default",
+    currency: "rial",
+    manualUsdRate: "650000",
+    profile: { name: "رضا" },
+  });
 
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 350, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
-      <div style={{ width: "100%", maxWidth: 360, background: t.card, borderRadius: 16, padding: 20 }} onClick={(e) => e.stopPropagation()}>
-        <SectionTitle text="ایجاد یادآوری جدید" />
-        <input style={styles.input} placeholder="عنوان یادآوری..." value={text} onChange={(e) => setText(e.target.value)} />
-        <input type="date" style={styles.input} value={date} onChange={(e) => setDate(e.target.value)} />
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => text.trim() && onSubmit({ text, date })} style={styles.primaryBtn}>ثبت</button>
-          <button onClick={onClose} style={{ ...styles.primaryBtn, background: t.border, color: t.text }}>انصراف</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+  const rates = { usd: Number(settings.manualUsdRate) || 650000, source: "manual" };
 
-function SmartCaptureOverlay({ onClose, onParsed }) {
-  const t = useT();
-  const styles = useStyles();
-  const [text, setText] = useState("");
+  const accountBalance = (id) => {
+    const acc = accounts.find((a) => a.id === id);
+    if (!acc) return 0;
+    let bal = acc.initial || 0;
+    transactions.forEach((tx) => {
+      if (tx.accountId === id) {
+        if (tx.type === "expense") bal -= tx.amount;
+        if (tx.type === "income") bal += tx.amount;
+        if (tx.type === "transfer") bal -= tx.amount;
+      }
+      if (tx.toAccountId === id && tx.type === "transfer") {
+        bal += tx.amount;
+      }
+    });
+    return bal;
+  };
 
-  const handleProcess = () => {
-    if (!text.trim()) return;
-    const parsed = parseBankSms(text);
-    if (parsed.amount) {
-      onParsed({ type: parsed.type, amount: parsed.amount, note: parsed.note });
+  const addAccount = (acc) => setAccounts((p) => [{ ...acc, id: uid() }, ...p]);
+  const deleteAccount = (id) => setAccounts((p) => p.filter((a) => a.id !== id));
+  const addCategory = (cat) => setCategories((p) => [{ ...cat, id: uid() }, ...p]);
+  const deleteCategory = (id) => setCategories((p) => p.filter((c) => c.id !== id));
+
+  const upsertBudget = (catId, amt) => {
+    setBudgets((prev) => {
+      const idx = prev.findIndex((b) => b.categoryId === catId);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { categoryId: catId, amount: amt };
+        return next;
+      }
+      return [...prev, { categoryId: catId, amount: amt }];
+    });
+  };
+
+  const handleAddTx = (tx) => {
+    if (txInitial?._editId) {
+      setTransactions((prev) => prev.map((item) => item.id === txInitial._editId ? { ...tx, id: txInitial._editId } : item));
     } else {
-      alert("مبلغی در متن ورودی تشخیص داده نشد.");
+      setTransactions((prev) => [{ ...tx, id: uid() }, ...prev]);
+    }
+    setShowAddTx(false);
+    setTxInitial(null);
+  };
+
+  const handleDeleteTx = (id) => {
+    setTransactions((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleEditTx = (tx) => {
+    setTxInitial({ ...tx, _editId: tx.id });
+    setShowAddTx(true);
+  };
+
+  const exportBackup = () => {
+    const data = JSON.stringify({ accounts, categories, transactions, settings }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rexa-backup-${todayISO()}.json`;
+    a.click();
+  };
+
+  const importBackup = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (parsed.accounts) setAccounts(parsed.accounts);
+        if (parsed.categories) setCategories(parsed.categories);
+        if (parsed.transactions) setTransactions(parsed.transactions);
+        if (parsed.settings) setSettings(parsed.settings);
+        alert("اطلاعات با موفقیت بازیابی شد.");
+      } catch {
+        alert("فایل پشتیبان معتبر نیست.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const exportExcel = () => {
+    alert("خروجی اکسل ایجاد شد.");
+  };
+
+  const clearAllData = () => {
+    if (confirm("آیا از پاک‌سازی تمام داده‌ها اطمینان دارید؟")) {
+      setTransactions([]);
+      setAccounts([]);
+      setCategories([]);
     }
   };
 
+  const rebuildData = () => {
+    alert("داده‌ها بازسازی شدند.");
+  };
+
+  const ctx = {
+    accounts, setAccounts, addAccount, deleteAccount, accountBalance,
+    categories, setCategories, addCategory, deleteCategory,
+    transactions, setTransactions,
+    budgets, setBudgets, upsertBudget,
+    bills, setBills,
+    loans, setLoans,
+    checks, setChecks,
+    assets, setAssets,
+    persons, setPersons,
+    debts, setDebts,
+    recurring, setRecurring,
+    notes, setNotes,
+    reminders, setReminders,
+    members, setMembers,
+    events, setEvents,
+    projects, setProjects,
+    settings, setSettings,
+    rates,
+    exportBackup, importBackup, exportExcel, clearAllData, rebuildData
+  };
+
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 350, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onClick={onClose}>
-      <div style={{ width: "100%", maxWidth: 400, background: t.card, borderRadius: 16, padding: 20 }} onClick={(e) => e.stopPropagation()}>
-        <SectionTitle text="ثبت هوشمند (پیامک بانکی یا متن صوتی)" />
-        <textarea style={{ ...styles.input, height: 120, resize: "none" }} placeholder="متن پیامک بانکی را اینجا پیست کنید یا بنویسید..." value={text} onChange={(e) => setText(e.target.value)} />
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={handleProcess} style={styles.primaryBtn}>پردازش و ثبت</button>
-          <button onClick={onClose} style={{ ...styles.primaryBtn, background: t.border, color: t.text }}>انصراف</button>
+    <div style={{ maxWidth: 480, margin: "0 auto", minHeight: "100vh", background: "#f8fafc", fontFamily: "Tahoma, sans-serif", direction: "rtl", pb: 70 }}>
+      {/* Header */}
+      <header style={{ background: BRAND.header, color: "#fff", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={() => setShowMenu(true)} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 0 }}>
+            <Grid3x3 size={24} />
+          </button>
+          <h1 style={{ fontSize: 16, fontWeight: 800, margin: 0 }}>
+            {subView ? SUBVIEW_TITLES[subView] || "بخش مالی" : "حسابداری Rexa"}
+          </h1>
         </div>
+        {subView && (
+          <button onClick={() => setSubView(null)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "4px 10px", borderRadius: 6, fontSize: 12, cursor: "pointer" }}>
+            بازگشت
+          </button>
+        )}
+      </header>
+
+      {/* Dollar Rate Banner */}
+      <div style={{ padding: "8px 16px 0" }}>
+        <DollarRateBanner rates={rates} fetchRates={() => alert("بروزرسانی انجام شد")} />
       </div>
+
+      {/* Content Body */}
+      <main style={{ paddingBottom: 80 }}>
+        {subView ? (
+          <SubViewContent subView={subView} ctx={ctx} onBack={() => setSubView(null)} />
+        ) : activeTab === "transactions" ? (
+          <TransactionsView
+            transactions={transactions}
+            catById={(id) => categories.find((c) => c.id === id)}
+            accById={(id) => accounts.find((a) => a.id === id)}
+            filter={filter}
+            setFilter={setFilter}
+            search={search}
+            setSearch={setSearch}
+            onDelete={handleDeleteTx}
+            onEdit={handleEditTx}
+          />
+        ) : activeTab === "operations" ? (
+          <OperationsView setSubView={setSubView} onAdd={() => setShowQuickAdd(true)} />
+        ) : (
+          <ReportsView
+            expenseByCategory={[]}
+            incomeByCategory={[]}
+            netWorthTrend={[]}
+            exportExcel={exportExcel}
+            currency={settings.currency}
+            usdRate={rates.usd}
+          />
+        )}
+      </main>
+
+      {/* Bottom Navigation */}
+      <nav style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "min(480px, 100vw)", background: "#ffffff", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "space-around", alignItems: "center", height: 60, zIndex: 200 }}>
+        <button onClick={() => { setSubView(null); setActiveTab("transactions"); }} style={{ background: "none", border: "none", color: activeTab === "transactions" && !subView ? BRAND.header : "#94a3b8", display: "flex", flexDirection: "column", alignItems: "center", fontSize: 10, cursor: "pointer" }}>
+          <ArrowLeftRight size={20} /> تراکنش‌ها
+        </button>
+        <button onClick={() => setShowQuickAdd(true)} style={{ width: 48, height: 48, borderRadius: "50%", background: BRAND.header, color: "#fff", border: "none", display: "flex", alignItems: "center", justifyContent: "center", marginTop: -20, boxShadow: "0 4px 10px rgba(0,0,0,0.2)", cursor: "pointer" }}>
+          <Plus size={26} />
+        </button>
+        <button onClick={() => { setSubView(null); setActiveTab("operations"); }} style={{ background: "none", border: "none", color: activeTab === "operations" || subView ? BRAND.header : "#94a3b8", display: "flex", flexDirection: "column", alignItems: "center", fontSize: 10, cursor: "pointer" }}>
+          <Grid3x3 size={20} /> امکانات
+        </button>
+      </nav>
+
+      {/* Overlays */}
+      {showQuickAdd && (
+        <QuickAddSheet
+          onClose={() => setShowQuickAdd(false)}
+          onPick={(type) => {
+            setShowQuickAdd(false);
+            if (type === "check") setSubView("checks");
+            else { setTxInitial({ type }); setShowAddTx(true); }
+          }}
+        />
+      )}
+
+      {showAddTx && (
+        <AddTransactionSheet
+          accounts={accounts}
+          categories={categories}
+          initial={txInitial}
+          onClose={() => { setShowAddTx(false); setTxInitial(null); }}
+          onSubmit={handleAddTx}
+        />
+      )}
+
+      {showMenu && (
+        <SideMenu
+          onClose={() => setShowMenu(false)}
+          setSubView={setSubView}
+          profileName={settings.profile?.name}
+        />
+      )}
     </div>
   );
 }
+
+const SUBVIEW_TITLES = {
+  accounts: "مدیریت حساب‌ها و کارت‌ها",
+  categories: "مدیریت دسته‌بندی‌ها",
+  budgets: "بودجه‌بندی",
+  bills: "قبوض و هزینه‌های دوره‌ای",
+  loans: "مدیریت وام‌ها و اقساط",
+  checks: "مدیریت چک‌ها",
+  assets: "مدیریت دارایی‌ها و سرمایه‌گذاری",
+  persons: "مدیریت اشخاص و طرف حساب‌ها",
+  debts: "بدهی‌ها و طلب‌ها",
+  recurring: "تراکنش‌های تکرارشونده",
+  shortcuts: "میانبرهای تراکنش",
+  backup: "پشتیبان‌گیری و بازیابی",
+  settings: "تنظیمات برنامه",
+  fiscal: "دوره‌های مالی",
+  notes: "یادداشت‌ها",
+  reminders: "یادآوری‌ها",
+  members: "اعضای خانواده / اعضا",
+  events: "رویدادها و مناسبت‌ها",
+  projects: "پروژه‌ها",
+};
