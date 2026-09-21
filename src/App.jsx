@@ -1,3 +1,7 @@
+function DollarRateBanner({ rates, fetchRates }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", background: "rgba(0,0,0,0.03)", borderRadius: 8, fontSize: 11.5, marginBottom: 12 }}>
+      {rates?.usd ? (
         <span>هر دلار ≈ {toFaInt(Math.round(rates.usd))} ریال {rates.source === "tgju" ? "· بازار آزاد TGJU" : rates.source === "manual" ? "· دستی" : ""}</span>
       ) : (
         <span>نرخ دلار در دسترس نیست</span>
